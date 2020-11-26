@@ -1,5 +1,4 @@
 
-
 #call function to
 S, I0, Is, Ia, C, H, V = model(X, Y, Z)
 
@@ -29,6 +28,7 @@ weights = {
     'c': [0.1], #C
     'r_1': [0.1], #C
     'r_2': [0.1] #C
+    'z': [0.1] #C
 }
 
 while(I0 + Is + Ia != 0)
