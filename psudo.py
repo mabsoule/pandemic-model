@@ -41,9 +41,9 @@ while(I0 + Is + Ia != 0)
         'f_a': new_f_o(),
         'i_s': new_f_o(),
         'i_a': new_f_o(),
-        'c': new_f_o(),
-        'r1': new_f_o(),
-        'r2': new_f_o(),
+        'c': new_c(),
+        'r1': new_r1(),
+        'r2': new_r2(),
         'z': new_z()
     }
 
@@ -72,3 +72,28 @@ def new_S():
 
 def f_s(X, Z, t):
     probability = 1 - X_prob(t, X) - Z_prob(t, Z)
+
+
+#######  casualties and recovered  ###########
+def new_r1():
+	change =  base_recovery_sympt + Z_prob(t, Z) #base recovery chance plus extra chance from budgeted care
+	return new_r1
+
+def new_r2():
+	change = base_recovery_asympt + Z_prob(t, Z) #base recovery chance plus extra chance from budgeted care
+	return new_r2
+
+def new_c():
+	change = base_casualty - Z_prob(t, Z) #base casualty chance is reduced by budgeted care 
+	return new_c
+
+def new_C(old_C):
+	change = Is*c
+	new_C = old_C + change
+	return new_C
+
+def new_H(old_H):
+	change = Is*r1 + Ia*r1
+	new_H = old_H + change
+	return new_H
+##############################################
