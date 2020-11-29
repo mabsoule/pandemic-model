@@ -29,11 +29,7 @@ N_0 = {'N':N}
 state_0.update(N_0)
 
 #add iteration limit (aid in troubleshooting)
-<<<<<<< HEAD
 t_limit = 1200 #define maximum iterations before exiting
-=======
-t_limit = 600 #define maximum iterations before exiting
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
 t_limit = {'t_limit':t_limit}
 state_0.update(t_limit)
 print('\nInitial parameters:', state_0)
@@ -74,11 +70,7 @@ def model(X, Y, Z, state_0):
         weights.get('c').append(0.005) #Christos
         weights.get('r_1').append(0.01) #Christos
         weights.get('r_2').append(0.01) #Christos
-<<<<<<< HEAD
         weights.get('z').append(new_z(t, X)) #Avery
-=======
-        weights.get('z').append(int(2.2)) #Avery
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
 
         # print("weights:", weights)
 
@@ -100,39 +92,22 @@ def model(X, Y, Z, state_0):
     if(t == state.get('t_limit')):
         print('t_limit hit')
 
-<<<<<<< HEAD
     return state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z')
-=======
-    return state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V')
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
 
 
 #define state functions
 
-<<<<<<< HEAD
 # def phi(z):
 #     phi = 2*z*(z+1)
 #     return phi
 
 def new_S(N, S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z):
     S_delta = -1 * z * (S/N) * (I0*f_0 + Is*f_s + Ia*f_a) - S*v
-=======
-def phi(z):
-    phi = 2*z*(z+1)
-    return phi
-
-def new_S(N, S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z):
-    S_delta = -1 * phi(z) * (S/N) * (I0*f_0 + Is*f_s + Ia*f_a) - S*v
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
     new_S = S + S_delta
     return new_S
 
 def new_I0(N, S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z):
-<<<<<<< HEAD
     I0_delta = z * (S/N) * (I0*f_0 + Is*f_s + Ia*f_a) - I0*i_s - I0*i_a
-=======
-    I0_delta = phi(z) * (S/N) * (I0*f_0 + Is*f_s + Ia*f_a) - I0*i_s - I0*i_a
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
     new_I0 = I0 + I0_delta
     return new_I0
 
@@ -179,7 +154,6 @@ def new_v(t, Y):
         v = 1
     return v
 
-<<<<<<< HEAD
 def new_z(t, X): #note deleting phi as our model can more fluidly adjust to changes in funding rather than steped result when using phi(z)
     Z = (6.7/50)*X
     if(Z > 6.7):
@@ -190,13 +164,6 @@ def new_z(t, X): #note deleting phi as our model can more fluidly adjust to chan
 
 #call pandemic simulator function
 S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z = model(X, Y, Z, state_0)
-=======
-
-
-
-#call pandemic simulator function
-S, I0, Is, Ia, C, H, V = model(X, Y, Z, state_0)
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
 print(C)
 
 #plot results
@@ -204,10 +171,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from operator import add
 
-<<<<<<< HEAD
 #plot state variables
-=======
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
 plt.close('all')
 plt.figure(1)
 t = np.arange(0,len(S),1)
@@ -223,7 +187,6 @@ plt.title('Pandemic model')
 plt.xlabel('Time (days)')
 plt.ylabel('Number of People')
 
-<<<<<<< HEAD
 
 #plot weight variables
 plt.figure(2)
@@ -243,8 +206,6 @@ plt.title('Pandemic model weights')
 plt.xlabel('Time (days)')
 plt.ylabel('Probability weights')
 
-=======
->>>>>>> b95c29b5b1e0f7702fd32e487835316e264f4c50
 #simple plot
 # plt.figure(2)
 # t = np.arange(0,len(S),1)
