@@ -1,9 +1,9 @@
-
+import numpy as np
 
 #define initial pandemic state
 state_0 = {
-    'S':[1000000],
-    'I0':[100],
+    'S':[100000],
+    'I0':[1],
     'Is':[0],
     'Ia':[0],
     'C':[0],
@@ -12,10 +12,15 @@ state_0 = {
 }
 
 #define budget and spending breakdown X, Y, Z
-B = 500
-X = 100
-Y = 300
-Z = 100
+#200 (Y) million vacine
+#30 (X) million for awareness
+#? (Z) for hospitalization
+
+# Values are in 10^6 Canadian Dollars
+B = 0.75 * (50+200+1000)
+X = 50 #0-50
+Y = 200 #0-200
+Z = 1000 #0-1000
 print('Valid budget:', B == (X+Y+Z))
 
 #calculate total population and add it to the state_0
@@ -56,16 +61,16 @@ def model(X, Y, Z, state_0):
         # print('\niteration:', t)
 
         #calculates new weight values and append to wieght lists
-        weights.get('f_0').append(0.01)
-        weights.get('v').append(0.0001)
-        weights.get('f_s').append(0.005)
-        weights.get('f_a').append(0.001)
-        weights.get('i_s').append(0.01)
-        weights.get('i_a').append(0.01)
-        weights.get('c').append(0.005)
-        weights.get('r_1').append(0.01)
-        weights.get('r_2').append(0.01)
-        weights.get('z').append(int(2.2)) #must be an integer
+        weights.get('f_0').append(0.008) #Sachin
+        weights.get('v').append(new_v(t, Y))
+        weights.get('f_s').append(0.01) #Sachin
+        weights.get('f_a').append(0.008) #Sachin
+        weights.get('i_s').append(new_i_s())
+        weights.get('i_a').append(new_i_a())
+        weights.get('c').append(0.005) #Christos
+        weights.get('r_1').append(0.01) #Christos
+        weights.get('r_2').append(0.01) #Christos
+        weights.get('z').append(int(2.2)) #Avery
 
         # print("weights:", weights)
 
@@ -131,6 +136,26 @@ def new_V(N, S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z)
     new_V = V + V_delta
     return new_V
 
+# define weight functions
+def new_i_s():
+    i_s = 0.8 / 6 #80% of people develop symptomes after on average 6 days
+    return i_s
+
+def new_i_a():
+    i_a = 0.2 / 6 #80% of people develop symptomes after on average 6 days
+    return i_a
+
+def new_v(t, Y):
+    if(Y>200): #Spending over a certain limit no longer speeds up the process due to time taken for clinical trials
+        Y = 200
+    spending_shift = -1*(18/5*Y) + 1080
+    v = 0.5196*np.exp(0.0146*(t - spending_shift))/100 #divide by 100 to convert percentage to decimal
+    if(v>1):
+        v = 1
+    return v
+
+
+
 
 #call pandemic simulator function
 S, I0, Is, Ia, C, H, V = model(X, Y, Z, state_0)
@@ -166,4 +191,10 @@ plt.ylabel('Number of People')
 # plt.title('Pandemic model')
 # plt.xlabel('Time (days)')
 # plt.ylabel('Number of People')
+
+# plt.figure(2)
+# t = np.arange(0,720,1)
+# v = new_v(t, Y)
+# plt.plot(t, v)
+
 plt.show()

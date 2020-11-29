@@ -35,7 +35,7 @@ while(I0 + Is + Ia != 0)
 
     #calculates new weight variables
     new_weights = {
-        'f_o': weights('f_0').append(new_f_o()[t]),
+        'f_0': weights('f_0').append(new_f_o()[t]),
         'v': new_f_o(),
         'f_s': new_f_o(),
         'f_a': new_f_o(),
@@ -72,3 +72,20 @@ def new_S():
 
 def f_s(X, Z, t):
     probability = 1 - X_prob(t, X) - Z_prob(t, Z)
+
+
+#######################################################
+# Learning how to work with dictionaries of concepts  #
+#######################################################
+
+# #access a value from a key
+# print(state_0.get('S')[0])
+#
+# #replace a value from a key
+# state = {'S':[10]}
+# state_0.update(state)
+# print(state_0.get('S'))
+#
+# #append a value using a key
+# state_0.get('S').append(1)
+# print(state_0.get('S'))
