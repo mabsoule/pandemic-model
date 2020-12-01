@@ -23,6 +23,10 @@ Y = 200 #0-200
 Z = 1000 #0-1000
 print('Valid budget:', B == (X+Y+Z))
 
+base_casualty = 0.2 #probably includes basic hospital care, so maybe we can justifiably raise it to 0.2
+base_recovery_sympt = 1 - base_casualty #if you dont die, you recover
+base_recovery_asympt =  1  #you recover, but how long is probably affected
+
 #calculate total population and add it to the state_0
 N = [sum(i) for i in zip(*list(state_0.values()))]
 N_0 = {'N':N}
@@ -67,9 +71,9 @@ def model(X, Y, Z, state_0):
         weights.get('f_a').append(0.008) #Sachin
         weights.get('i_s').append(new_i_s())
         weights.get('i_a').append(new_i_a())
-        weights.get('c').append(0.005) #Christos
-        weights.get('r_1').append(0.01) #Christos
-        weights.get('r_2').append(0.01) #Christos
+        weights.get('c').append(new_c(t, Z)) #Christos
+        weights.get('r_1').append(new_r1(t, Z)) #Christos
+        weights.get('r_2').append(new_r2(t, Z)) #Christos
         weights.get('z').append(new_z(t, X)) #Avery
 
         # print("weights:", weights)
@@ -161,6 +165,33 @@ def new_z(t, X): #note deleting phi as our model can more fluidly adjust to chan
     z = 13.4 + Z*np.exp((-1/13)*t) - Z
     return z
 
+
+#######  casualties and recovered  ###########
+def new_r1(t, Z):
+    change =  1 - new_casul(t, Z) #base recovery chance plus extra chance from budgeted care
+    return new_r1
+
+def new_r2(t, Z):
+    new_r2 = base_recovery_asympt #base recovery chance plus extra chance from budgeted care
+    #if (t-day_infected > 14):
+    #   new_r2 = 1
+    return new_r2
+
+def new_c(t, Z):
+    new_c = new_casul(t, Z)  #base casualty chance is reduced by budgeted care 
+    return new_c
+
+def new_casul(t, Z):
+    e_val = np.exp(t/30-1)
+
+    if (t>30):
+        e_val = 1
+    if (Z>1000):
+        Z=1000
+    new_casualty = base_casualty-(Z*0.13/1000)*e_val
+    
+    return new_casualty
+##############################################
 
 #call pandemic simulator function
 S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z = model(X, Y, Z, state_0)
