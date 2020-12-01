@@ -1,4 +1,6 @@
 import numpy as np
+import sympy as sym
+from scipy.optimize import minimize
 
 #define initial pandemic state
 state_0 = {
@@ -17,25 +19,17 @@ state_0 = {
 #? (Z) for hospitalization
 
 # Values are in 10^6 Canadian Dollars
-B = 0.75 * (50+200+1000)
-X = 50 #0-50
-Y = 200 #0-200
-Z = 1000 #0-1000
-print('Valid budget:', B == (X+Y+Z))
-
-#calculate total population and add it to the state_0
-N = [sum(i) for i in zip(*list(state_0.values()))]
-N_0 = {'N':N}
-state_0.update(N_0)
-
-#add iteration limit (aid in troubleshooting)
-t_limit = 1200 #define maximum iterations before exiting
-t_limit = {'t_limit':t_limit}
-state_0.update(t_limit)
-print('\nInitial parameters:', state_0)
+# B = 0.75 * (50+200+1000)
+# X = 50 #0-50
+# Y = 200 #0-200
+# Z = 1000 #0-1000
+# print('Valid budget:', B == (X+Y+Z))
 
 #define pandemic simulator function depending on X, Y, Z
-def model(X, Y, Z, state_0):
+def model(money, state_0, flag=False):
+    X = money[0]
+    Y = money[1]
+    Z = money[2]
     #initialize time at day 0
     t = 0
 
@@ -61,10 +55,10 @@ def model(X, Y, Z, state_0):
         # print('\niteration:', t)
 
         #calculates new weight values and append to wieght lists
-        weights.get('f_0').append(0.008) #Sachin
+        weights.get('f_0').append(new_f_0(X)) #Sachin
         weights.get('v').append(new_v(t, Y))
-        weights.get('f_s').append(0.01) #Sachin
-        weights.get('f_a').append(0.008) #Sachin
+        weights.get('f_s').append(new_f_s(t, X, Z)) #Sachin
+        weights.get('f_a').append(new_f_a(t, X, Z)) #Sachin
         weights.get('i_s').append(new_i_s())
         weights.get('i_a').append(new_i_a())
         weights.get('c').append(0.005) #Christos
@@ -92,7 +86,10 @@ def model(X, Y, Z, state_0):
     if(t == state.get('t_limit')):
         print('t_limit hit')
 
-    return state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z')
+    if flag==True:
+        return max(state.get('C'))
+    else:
+        return state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z')
 
 
 #define state functions
@@ -161,17 +158,102 @@ def new_z(t, X): #note deleting phi as our model can more fluidly adjust to chan
     z = 13.4 + Z*np.exp((-1/13)*t) - Z
     return z
 
+def new_f_0(X):
+  x = sym.Symbol('x')
+  budget1 = 0 # in millions
+  f0_prob1 = 20/100 # upper bound of probability in decimal 
+  budget2 = 50 # change to max X budget for flexbility
+  f0_prob2 = 0.01/100 # lower bound of probability in decimal 
+  m = (f0_prob2 - f0_prob1) / (budget2 - budget1)
+  f0 = m*(x-budget1)+f0_prob1
+  return f0.subs({x:X})
 
-#call pandemic simulator function
-S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z = model(X, Y, Z, state_0)
-print(C)
+def new_f_s(t, X, Z):
+  x = sym.Symbol('x')
+  z = sym.Symbol('z')
+  
+  avgSpreadRate = 0.15
+  
+  xBudget1 = 0 # change to low X budget for flexbility
+  zBudget1 = 770 # change to low Z budget for flexbility
+  fs_prob1 = (avgSpreadRate+0.1) # upper bound of spread probability when spending lower (in decimal) 
+
+  xBudget2 = 50 # change to high X budget for flexbility
+  zBudget2 = 1000 # change to high Z budget for flexbility
+  fs_prob2 = (avgSpreadRate-0.1) # lower bound of spread probability 
+
+  # Symbolic equations below that adapt in case upper/lower bounds change
+  m_x = (fs_prob2 - fs_prob1) / (xBudget2 - xBudget1)
+  fs_x =  m_x*(x-xBudget1)+fs_prob1
+
+  m_z = (fs_prob2 - fs_prob1) / (zBudget2 - zBudget1)
+  fs_z =  m_z*(z-zBudget1)+fs_prob1
+
+  if t <= 180: # Assuming weight of awareness spending is significant in first 6 months
+    wx = 0.6
+  else:
+    wx = 0.1
+    
+  fs = wx*fs_x.subs({x:X}) + (1-wx)*fs_z.subs({z:Z})
+  return fs
+
+def new_f_a(t, X, Z):
+  fa = (1-0.42)*new_f_s(t, X, Z) # asymptomatic probabiliy is 42% less than symptomatic
+  return fa
+
 
 #plot results
 import matplotlib.pyplot as plt
 import numpy as np
 from operator import add
 
-#plot state variables
+X = 45 #0-50
+Y = 100 #0-200
+Z = 780 #770-1000
+budget = [X, Y, Z]
+
+#calculate total population and add it to the state_0
+N = [sum(i) for i in zip(*list(state_0.values()))]
+N_0 = {'N':N}
+state_0.update(N_0)
+
+#add iteration limit (aid in troubleshooting)
+t_limit = 600 #define maximum iterations before exiting
+t_limit = {'t_limit':t_limit}
+state_0.update(t_limit)
+print('\nInitial parameters:', state_0)
+
+# optimization
+def constraint1(initial_values):
+    X = initial_values[0]
+    Y = initial_values[1]
+    Z = initial_values[2]
+    return 1250-X-Y-Z
+    #return X+Y+Z-1250
+
+x0 = [50,200,1000] # initial points
+
+# bounds for X, Y, Z
+X_bound = (0,50)
+Y_bound = (0,200)
+Z_bound = (770,1000)
+
+bnds = (X_bound, Y_bound, Z_bound)
+con1 = {'type':'eq', 'fun':constraint1} # currently set as equality constraint for ineqaulity use: ineq
+
+# C1 = model(budget, state_0, True)
+# print(C1)
+
+# sol = minimize(model, x0, method='SLSQP', bounds=bnds, constraints=con1, args=(state_0, True)) 
+# print(sol)
+
+# C2 = model(budget, state_0, True)
+# print(budget, C2)
+
+#call pandemic simulator function
+S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z = model(budget, state_0)
+print(C)
+##plot state variables
 plt.close('all')
 plt.figure(1)
 t = np.arange(0,len(S),1)
@@ -187,26 +269,25 @@ plt.title('Pandemic model')
 plt.xlabel('Time (days)')
 plt.ylabel('Number of People')
 
+##plot weight variables
+# plt.figure(2)
+# t = np.arange(0,len(z),1)
+# plt.plot(t, f_0, label='f_0')
+# # plt.plot(t, v, label='v')
+# plt.plot(t, f_s, label='f_s')
+# plt.plot(t, f_a, label='f_a')
+# # plt.plot(t, i_s, label='i_s')
+# # plt.plot(t, i_a, label='i_a')
+# # plt.plot(t, c, label='c')
+# # plt.plot(t, r_1, label='r_1')
+# # plt.plot(t, r_2, label='r_2')
+# # plt.plot(t, z, label='z')
+# plt.legend()
+# plt.title('Pandemic model weights')
+# plt.xlabel('Time (days)')
+# plt.ylabel('Probability weights')
 
-#plot weight variables
-plt.figure(2)
-t = np.arange(0,len(z),1)
-plt.plot(t, f_0, label='f_0')
-plt.plot(t, v, label='v')
-plt.plot(t, f_s, label='f_s')
-plt.plot(t, f_a, label='f_a')
-plt.plot(t, i_s, label='i_s')
-plt.plot(t, i_a, label='i_a')
-plt.plot(t, c, label='c')
-plt.plot(t, r_1, label='r_1')
-plt.plot(t, r_2, label='r_2')
-# plt.plot(t, z, label='z')
-plt.legend()
-plt.title('Pandemic model weights')
-plt.xlabel('Time (days)')
-plt.ylabel('Probability weights')
-
-#simple plot
+##simple plot
 # plt.figure(2)
 # t = np.arange(0,len(S),1)
 # plt.plot(t, S, label='Susceptible')
