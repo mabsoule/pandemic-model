@@ -2,136 +2,70 @@ import numpy as np
 import sympy as sym
 from operator import add
 from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
 import matplotlib.pyplot as plt
 
 #define pandemic simulator function depending on X, Y, Z returning Casualties
-def model_opt(budget, t_limit, dt):
-    print('model_opt budget:', budget)
+def model_opt(budget):
+    print('\n',budget)
     X = budget[0]
     Y = budget[1]
     Z = budget[2]
     #initialize time at day 0
     t = 0
 
-    #define initial pandemic state
-    state = {
-        'S':100000.0,
-        'I0':1.0,
-        'Is':0.0,
-        'Ia':0.0,
-        'C':0.0,
-        'H':0.0,
-        'V':0.0
+    #initialize state as state_0
+    state_0 = {
+        'S':[100000],
+        'I0':[1],
+        'Is':[0],
+        'Ia':[0],
+        'C':[0],
+        'H':[0],
+        'V':[0]
     }
-
     #calculate total population and add it to the state_0
-    N = sum(state.values())
+    N = [sum(i) for i in zip(*list(state_0.values()))]
     N_0 = {'N':N}
-    state.update(N_0)
+    state_0.update(N_0)
 
     #add iteration limit (aid in troubleshooting)
+    t_limit = 400 #define maximum iterations before exiting
     t_limit = {'t_limit':t_limit}
-    state.update(t_limit)
+    state_0.update(t_limit)
+    # print('\nInitial parameters:', state_0)
+
+    state = state_0
 
     #initialize weights
     weights = {
-        'f_0': 0.0,
-        'v': 0.0,
-        'f_s': 0.0,
-        'f_a': 0.0,
-        'i_s': 0.0,
-        'i_a': 0.0,
-        'c': 0.0,
-        'r_1': 0.0,
-        'r_2': 0.0,
-        'z': 0.0
+        'f_0': [0],
+        'v': [0],
+        'f_s': [0],
+        'f_a': [0],
+        'i_s': [0],
+        'i_a': [0],
+        'c': [0],
+        'r_1': [0],
+        'r_2': [0],
+        'z': [0]
     }
 
     #enter while loop to calculate iterations until no sick individuals are left or t_limit is hit
     while(t != state.get('t_limit')): #state.get('I0')[t] + state.get('Is')[t] + state.get('Ia')[t] != 0 or
+        # print('\niteration:', t)
 
         #calculates new weight values and append to wieght lists
-        weights['f_0'] = new_f_0(X)
-        weights['v'] = new_v(t, Y)
-        weights['f_s'] = new_f_s(t, X, Z)
-        weights['f_a'] = new_f_a(t, X, Z)
-        weights['i_s'] = new_i_s()
-        weights['i_a'] = new_i_a()
-        weights['c'] = new_c(t, Z)
-        weights['r_1'] = new_r1(t, Z)
-        weights['r_2'] = new_r2(t, Z)
-        weights['z'] = new_z(t, X)
-
-        #calculate new state values and append to state lists
-        state['S'] = new_S(state.get('N'), state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z'))
-        state['I0'] = new_I0(state.get('N'), state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z'))
-        state['Is'] = new_Is(state.get('N'), state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z'))
-        state['Ia'] = new_Ia(state.get('N'), state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z'))
-        state['C'] = new_C(state.get('N'), state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z'))
-        state['H'] = new_H(state.get('N'), state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z'))
-        state['V'] = new_V(state.get('N'), state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z'))
-        #iterate time period by 1 day
-        t += dt
-    print('model_opt iteration casualties:', state.get('C'))
-    return state.get('C')
-
-
-#define pandemic simulator function depending on X, Y, Z
-def model(budget, t_limit, dt):
-    X = budget[0]
-    Y = budget[1]
-    Z = budget[2]
-    #initialize time at day 0
-    t = 0
-
-    #define initial pandemic state
-    state = {
-        'S':[100000.0],
-        'I0':[1.0],
-        'Is':[0.0],
-        'Ia':[0.0],
-        'C':[0.0],
-        'H':[0.0],
-        'V':[0.0]
-    }
-
-    #calculate total population and add it to the state_0
-    N = [sum(i) for i in zip(*list(state.values()))]
-    N_0 = {'N':N}
-    state.update(N_0)
-
-    #add iteration limit (aid in troubleshooting)
-    t_limit = {'t_limit':t_limit}
-    state.update(t_limit)
-
-    #initialize weights (empty so first iteration takes new weights)
-    weights = {
-        'f_0': [],
-        'v': [],
-        'f_s': [],
-        'f_a': [],
-        'i_s': [],
-        'i_a': [],
-        'c': [],
-        'r_1': [],
-        'r_2': [],
-        'z': []
-    }
-
-    #enter while loop to calculate iterations until no sick individuals are left or t_limit is hit
-    while(t != state.get('t_limit')): #state.get('I0')[t] + state.get('Is')[t] + state.get('Ia')[t] != 0 or
-
-        #calculates new weight values and append to wieght lists
-        weights.get('f_0').append(new_f_0(X))
+        weights.get('f_0').append(new_f_0(X)) #Sachin
         weights.get('v').append(new_v(t, Y))
-        weights.get('f_s').append(new_f_s(t, X, Z))
-        weights.get('f_a').append(new_f_a(t, X, Z))
+        weights.get('f_s').append(new_f_s(t, X, Z)) #Sachin
+        weights.get('f_a').append(new_f_a(t, X, Z)) #Sachin
         weights.get('i_s').append(new_i_s())
         weights.get('i_a').append(new_i_a())
-        weights.get('c').append(new_c(t, Z))
-        weights.get('r_1').append(new_r1(t, Z))
-        weights.get('r_2').append(new_r2(t, Z))
-        weights.get('z').append(new_z(t, X))
+        weights.get('c').append(new_c(t, Z)) #Christos
+        weights.get('r_1').append(new_r1(t, Z)) #Christos
+        weights.get('r_2').append(new_r2(t, Z)) #Christos
+        weights.get('z').append(new_z(t, X)) #Avery
 
         #calculate new state values and append to state lists
         state.get('S').append(new_S(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
@@ -143,12 +77,81 @@ def model(budget, t_limit, dt):
         state.get('V').append(new_V(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
 
         #iterate time period by 1 day
-        t += dt
+        t +=1
+    #notify if simulation failed to finish before t hit t_limit
+    if(t == state.get('t_limit')):
+        print('iteration complete, t_limit hit')
+    #print Casualties
+    print('Casualties:',state.get('C')[-1])
+    return state.get('C')[-1]
+
+
+#define pandemic simulator function depending on X, Y, Z
+def model(money, state_0):
+    X = money[0]
+    Y = money[1]
+    Z = money[2]
+    #initialize time at day 0
+    t = 0
+
+    #initialize state as state_0
+    state = state_0
+
+    #initialize weights
+    weights = {
+        'f_0': [0],
+        'v': [0],
+        'f_s': [0],
+        'f_a': [0],
+        'i_s': [0],
+        'i_a': [0],
+        'c': [0],
+        'r_1': [0],
+        'r_2': [0],
+        'z': [0]
+    }
+
+    #enter while loop to calculate iterations until no sick individuals are left or t_limit is hit
+    while(t != state.get('t_limit')): #state.get('I0')[t] + state.get('Is')[t] + state.get('Ia')[t] != 0 or
+        # print('\niteration:', t)
+
+        #calculates new weight values and append to wieght lists
+        weights.get('f_0').append(new_f_0(X)) #Sachin
+        weights.get('v').append(new_v(t, Y))
+        weights.get('f_s').append(new_f_s(t, X, Z)) #Sachin
+        weights.get('f_a').append(new_f_a(t, X, Z)) #Sachin
+        weights.get('i_s').append(new_i_s())
+        weights.get('i_a').append(new_i_a())
+        weights.get('c').append(new_c(t, Z)) #Christos
+        weights.get('r_1').append(new_r1(t, Z)) #Christos
+        weights.get('r_2').append(new_r2(t, Z)) #Christos
+        weights.get('z').append(new_z(t, X)) #Avery
+
+
+        # print("weights:", weights)
+
+        #calculate new state values and append to state lists
+        state.get('S').append(new_S(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
+        state.get('I0').append(new_I0(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
+        state.get('Is').append(new_Is(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
+        state.get('Ia').append(new_Ia(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
+        state.get('C').append(new_C(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
+        state.get('H').append(new_H(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
+        state.get('V').append(new_V(state.get('N')[0], state.get('S')[t], state.get('I0')[t], state.get('Is')[t], state.get('Ia')[t], state.get('C')[t], state.get('H')[t], state.get('V')[t], weights.get('f_0')[t], weights.get('v')[t], weights.get('f_s')[t], weights.get('f_a')[t], weights.get('i_s')[t], weights.get('i_a')[t], weights.get('c')[t], weights.get('r_1')[t], weights.get('r_2')[t], weights.get('z')[t]))
+
+        # print("state:", state)
+
+        #iterate time period by 1 day
+        t +=1
+
+    #notify if simulation failed to finish before t hit t_limit
+    if(t == state.get('t_limit')):
+        print('iteration complete, t_limit hit')
 
     return state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z')
 
 
-# define state functions
+
 def new_S(N, S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z):
     S_delta = -1 * z * (S/N) * (I0*f_0 + Is*f_s + Ia*f_a) - S*v
     new_S = S + S_delta
@@ -296,66 +299,62 @@ def new_c(t, Z):
     return new_c
 
 # optimization function
-def constraint1(budget):
-    X = budget[0]
-    Y = budget[1]
-    Z = budget[2]
+def constraint1(initial_values):
+    X = initial_values[0]
+    Y = initial_values[1]
+    Z = initial_values[2]
     return (0.8*1250)-X-Y-Z
 
 
+
+####################
+#    Script       #
 ###################
-#     Script      #
-###################
+
+
+#define initial pandemic state
+state_0 = {
+    'S':[100000],
+    'I0':[1],
+    'Is':[0],
+    'Ia':[0],
+    'C':[0],
+    'H':[0],
+    'V':[0]
+}
 
 # Values are in 10^6 Canadian Dollars
 B = 0.80 * (50+200+1000) #Change the budget contraint in the optimization function as well
-
-# budget for model
-X = 0 #0-50
-Y = 0 #0-200
-Z = 1000 #770-1000
-print('Valid model budget:', B == (X+Y+Z))
+X = 50 #0-50
+Y = 50 #0-200
+Z = 900 #770-1000
+print('Valid budget:', B == (X+Y+Z))
 budget = np.array([X, Y, Z])
-
-# intial budget for model_opt
-X2 = 50 #0-50
-Y2 = 50 #0-200
-Z2 = 900 #770-1000
-x0 = np.array([X2, Y2, Z2])
-print('Valid model_opt budget:', B == (X+Y+Z))
-budget = np.array([X, Y, Z])
-
-#additional arguments to pass into model
-t_limit = 500
-dt = 1
 
 # bounds for X, Y, Z
-X_bound = (0,50)
-Y_bound = (0,200)
-Z_bound = (0,1000)
-bounds = (X_bound, Y_bound, Z_bound)
+# global X_bound
+# X_bound = (0,50)
+# Y_bound = (0,200)
+# Z_bound = (770,1000)
+# bnds = (X_bound, Y_bound, Z_bound)
+
 
 # con1 = {'type':'eq', 'fun':constraint1} # currently set as equality constraint for ineqaulity use: ineq
-con1 = ({'type':'eq', 'fun':constraint1})
+# con1 = ({'type':'ineq', 'fun':constraint1})
 
 # call minimization function
-sol = minimize(model_opt, x0, method='SLSQP', args=(t_limit, dt), constraints=con1, bounds=bounds, options={'disp':True})
-print(sol)
+# sol = minimize(model_opt, budget, method='SLSQP', bounds=bnds, constraints=con1, args=(state_0), options={'disp':True})
+# print(sol)
+
+bounds = [(0,50),(0,200),(0,1000)]
+sol = differential_evolution(model_opt, bounds, disp=True)
 
 #call pandemic simulator function for testing
-[S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z] = model(budget, t_limit, dt)
-# print('Casualties (model): ',C)
-print('Casualties (model): ',C[-1])
-
-C_2 = model_opt(budget, t_limit, dt)
-print('Casualties (model_opt): ', C_2)
-
-# Results:
-# [0,0,1000] -> model_opt C = 3969.74577955717 for t_limit = 500, dt = 1
-# [0,0,1000] -> model C = 5604.82235545045 for t_limit = 500, dt = 1
-
+# [S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z] = model(budget, state_0)
+# print('Casualties: ',C[-1])
 
 #plot state variables
+plt.close('all')
 plt.figure(1)
 t = np.arange(0,len(S),1)
 plt.plot(t, S, label='Susceptible', color='k')
