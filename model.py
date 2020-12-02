@@ -19,11 +19,23 @@ state_0 = {
 #? (Z) for hospitalization
 
 # Values are in 10^6 Canadian Dollars
-# B = 0.75 * (50+200+1000)
-# X = 50 #0-50
-# Y = 200 #0-200
-# Z = 1000 #0-1000
-# print('Valid budget:', B == (X+Y+Z))
+
+B = 0.75 * (50+200+1000)
+X = 50 #0-50
+Y = 200 #0-200
+Z = 1000 #0-1000
+print('Valid budget:', B == (X+Y+Z))
+
+#calculate total population and add it to the state_0
+N = [sum(i) for i in zip(*list(state_0.values()))]
+N_0 = {'N':N}
+state_0.update(N_0)
+
+#add iteration limit (aid in troubleshooting)
+t_limit = 1200 #define maximum iterations before exiting
+t_limit = {'t_limit':t_limit}
+state_0.update(t_limit)
+print('\nInitial parameters:', state_0)
 
 #define pandemic simulator function depending on X, Y, Z
 def model(money, state_0, flag=False):
@@ -61,9 +73,9 @@ def model(money, state_0, flag=False):
         weights.get('f_a').append(new_f_a(t, X, Z)) #Sachin
         weights.get('i_s').append(new_i_s())
         weights.get('i_a').append(new_i_a())
-        weights.get('c').append(0.005) #Christos
-        weights.get('r_1').append(0.01) #Christos
-        weights.get('r_2').append(0.01) #Christos
+        weights.get('c').append(new_c(t, Z)) #Christos
+        weights.get('r_1').append(new_r1(t, Z)) #Christos
+        weights.get('r_2').append(new_r2(t, Z)) #Christos
         weights.get('z').append(new_z(t, X)) #Avery
 
         # print("weights:", weights)
@@ -90,13 +102,6 @@ def model(money, state_0, flag=False):
         return max(state.get('C'))
     else:
         return state.get('S'), state.get('I0'), state.get('Is'), state.get('Ia'), state.get('C'), state.get('H'), state.get('V'), weights.get('f_0'), weights.get('v'), weights.get('f_s'), weights.get('f_a'), weights.get('i_s'), weights.get('i_a'), weights.get('c'), weights.get('r_1'), weights.get('r_2'), weights.get('z')
-
-
-#define state functions
-
-# def phi(z):
-#     phi = 2*z*(z+1)
-#     return phi
 
 def new_S(N, S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z):
     S_delta = -1 * z * (S/N) * (I0*f_0 + Is*f_s + Ia*f_a) - S*v
@@ -201,6 +206,32 @@ def new_f_a(t, X, Z):
   fa = (1-0.42)*new_f_s(t, X, Z) # asymptomatic probabiliy is 42% less than symptomatic
   return fa
 
+def new_r1(t, Z):
+    change =  1 - new_casul(t, Z) #base recovery chance plus extra chance from budgeted care
+    return new_r1
+
+def new_r2(t, Z):
+    new_r2 = 1/14  #base recovery chance but in this stage for an expected 14 days
+    return new_r2
+
+def new_c(t, Z):
+    new_c = new_casul(t, Z)  #base casualty chance is reduced by budgeted care 
+    return new_c
+
+def new_casul(t, Z):
+    e_val = np.exp(t/30-1)
+
+    if (t>30):
+        e_val = 1
+    if (Z>1000):
+        Z=1000
+    new_casualty = 0.2 -(Z*0.13/1000)*e_val #base casualty with basic hospital care is 0.2
+    
+    return new_casualty
+
+#call pandemic simulator function
+S, I0, Is, Ia, C, H, V, f_0, v, f_s, f_a, i_s, i_a, c, r_1, r_2, z = model(X, Y, Z, state_0)
+print(C)
 
 #plot results
 import matplotlib.pyplot as plt
