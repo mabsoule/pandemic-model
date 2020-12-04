@@ -230,9 +230,9 @@ def new_f_0(X):
 
     x = sym.Symbol('x')
     budget1 = 0 # in millions
-    f0_prob1 = 15/100/6 # upper bound of probability in decimal
+    f0_prob1 = 15/100 # upper bound of probability in decimal
     budget2 = 50 # change to max X budget for flexbility
-    f0_prob2 = 0.01/100/6 # lower bound of probability in decimal
+    f0_prob2 = 0.01/100 # lower bound of probability in decimal
     m = (f0_prob2 - f0_prob1) / (budget2 - budget1)
     f0 = m*(x-budget1)+f0_prob1
     return f0.subs({x:X})
